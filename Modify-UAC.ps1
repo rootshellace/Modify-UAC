@@ -16,18 +16,34 @@ $CurrentUserPrompt = "[$(Get-Date -Format "yyyy-MM-dd:HH-mm-ss")] [$([System.Env
 
 function Show-Help 
 {
-    Write-Host ""
-    Write-Host "Usage:"
-    Write-Host "  .\ModifyUAC.ps1 -Enable"
-    Write-Host "  .\ModifyUAC.ps1 -Disable"
-    Write-Host "  .\ModifyUAC.ps1 -Help"
-    Write-Host ""
-    Write-Host "Description:"
-    Write-Host "  -Enable    : Enables UAC"
-    Write-Host "  -Disable   : Disables UAC"
-    Write-Host "  -Help      : Shows this help message"
-    Write-Host ""
+    Write-Host -Object ""
+    Write-Host -Object "Usage:" -ForegroundColor Cyan
+    Write-Host -Object "  .\Modify-UAC.ps1 -Enable" -ForegroundColor Cyan
+    Write-Host -Object "  .\Modify-UAC.ps1 -Disable" -ForegroundColor Cyan
+    Write-Host -Object "  .\Modify-UAC.ps1 -Help" -ForegroundColor Cyan
+    Write-Host -Object ""
+    Write-Host -Object "Description:" -ForegroundColor White
+    Write-Host -Object "  -Enable    : Enables UAC" -ForegroundColor White
+    Write-Host -Object "  -Disable   : Disables UAC" -ForegroundColor White
+    Write-Host -Object "  -Help      : Shows this help message" -ForegroundColor White
+    Write-Host -Object ""
     exit 1
+}
+
+function Show-FormattedHeader
+{
+    param 
+    (
+        [Parameter(Mandatory = $true)][string]$HeaderMessage
+    )
+
+    $FullHeader = ">>> " + $HeaderMessage + " <<<"
+    $BarLine = "-" * $FullHeader.Length
+
+    Write-Host -Object ""
+    Write-Host -Object $FullHeader -ForegroundColor White
+    Write-Host -Object $BarLine -ForegroundColor White
+    Write-Host
 }
 
 function Test-RegistryExists
@@ -43,31 +59,31 @@ function Test-RegistryExists
     {
         if (Test-Path -Path $RegistryPath)
         {
-            Write-Output -InputObject "[+] $CurrentUserPrompt Registry path $RegistryPath exists!"
+            Write-Host -Object "[+] $CurrentUserPrompt Registry path $RegistryPath exists!" -ForegroundColor Green
 
             if (Get-ItemProperty -Path $RegistryPath -Name $PropertyName -ErrorAction SilentlyContinue)
             {
-                Write-Output -InputObject "[+] $CurrentUserPrompt Property name $PropertyName exists!"
+                Write-Host -Object "[+] $CurrentUserPrompt Property name $PropertyName exists!" -ForegroundColor Green
             }
             else 
             {
-                Write-Output -InputObject "[-] $CurrentUserPrompt Property name $PropertyName does not exist!"
-                Write-Output -InputObject "[-] $CurrentUserPrompt The script will exit!"
+                Write-Host -Object "[*] $CurrentUserPrompt Property name $PropertyName does not exist!" -ForegroundColor Yellow
+                Write-Host -Object "[*] $CurrentUserPrompt The script will exit!" -ForegroundColor Yellow
                 exit 2
             }
         }
         else 
         {
-            Write-Output -InputObject "[-] $CurrentUserPrompt Registry path $RegistryPath does not exist!"
-            Write-Output -InputObject "[-] $CurrentUserPrompt The script will exit!"
+            Write-Host -Object "[*] $CurrentUserPrompt Registry path $RegistryPath does not exist!" -ForegroundColor Yellow
+            Write-Host -Object "[*] $CurrentUserPrompt The script will exit!" -ForegroundColor Yellow
             exit 2
         }
     }
     catch 
     {
-        Write-Output -InputObject "[x] $CurrentUserPrompt An error occured when trying to check if registry exists!"
-        Write-Output -InputObject "[x] $CurrentUserPrompt Error: $($_.Exception.Message)"
-        Write-Output -InputObject "[x] $CurrentUserPrompt The script will exit!"
+        Write-Host -Object "[x] $CurrentUserPrompt An error occured when trying to check if registry exists!" -ForegroundColor Red
+        Write-Host -Object "[x] $CurrentUserPrompt Error: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host -Object "[x] $CurrentUserPrompt The script will exit!" -ForegroundColor Red
         exit 2
     }
 }
@@ -87,9 +103,9 @@ function Get-RegistryValue
     }
     catch 
     {
-        Write-Output -InputObject "[x] $CurrentUserPrompt An error occured when trying to get the registry value!"
-        Write-Output -InputObject "[x] $CurrentUserPrompt Error: $($_.Exception.Message)"
-        Write-Output -InputObject "[x] $CurrentUserPrompt The script will exit!"
+        Write-Host -Object "[x] $CurrentUserPrompt An error occured when trying to get the registry value!" -ForegroundColor Red
+        Write-Host -Object "[x] $CurrentUserPrompt Error: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host -Object "[x] $CurrentUserPrompt The script will exit!" -ForegroundColor Red
         exit 3
     }
 
@@ -112,123 +128,121 @@ function Set-RegistryValueUAC
     }
     catch 
     {
-        Write-Output -InputObject "[x] $CurrentUserPrompt An error occured when trying to set the registry value!"
-        Write-Output -InputObject "[x] $CurrentUserPrompt Error: $($_.Exception.Message)"
-        Write-Output -InputObject "[x] $CurrentUserPrompt The script will exit!"
+        Write-Host -Object "[x] $CurrentUserPrompt An error occured when trying to set the registry value!" -ForegroundColor Red
+        Write-Host -Object "[x] $CurrentUserPrompt Error: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host -Object "[x] $CurrentUserPrompt The script will exit!" -ForegroundColor Red
         exit 4
     }
 }
 
-function Update-ChangesUAC
-{
-    try 
-    {
-        Write-Output -InputObject "[+] $CurrentUserPrompt Restarting PC in 60 seconds..."
-        Start-Sleep -Seconds 60
-        Restart-Computer
-    }
-    catch 
-    {
-        Write-Output -InputObject "[x] $CurrentUserPrompt An error occured when trying to restart PC for changes to take effect!"
-        Write-Output -InputObject "[x] $CurrentUserPrompt Error: $($_.Exception.Message)"
-        Write-Output -InputObject "[x] $CurrentUserPrompt The script will exit!"
-        exit 6
-    }
-}
 
 function Enable-UAC
 {
+    Show-FormattedHeader -HeaderMessage "Check Registry"
     Test-RegistryExists -RegistryPath $RegistryPathLUA -PropertyName $PropertyNameLUA
+    
+    Show-FormattedHeader -HeaderMessage "Get Current Registry Value"
     $CurrentValueLUA = Get-RegistryValue -RegistryPath $RegistryPathLUA -PropertyName $PropertyNameLUA
-    Write-Output -InputObject "CurrentValueLUA: $CurrentValueLUA"
+    Write-Host -Object "[+] $CurrentUserPrompt Current value for $PropertyNameLUA : $CurrentValueLUA" -ForegroundColor Green
+
     if ($CurrentValueLUA -eq 1)
     {
-        Write-Output -InputObject "[-] $CurrentUserPrompt UAC is already enabled!"
-        Write-Output -InputObject "[-] $CurrentUserPrompt The script will exit!"
+        Write-Host -Object "[*] $CurrentUserPrompt UAC is already enabled!" -ForegroundColor Yellow
+        Write-Host -Object "[*] $CurrentUserPrompt The script will exit!" -ForegroundColor Yellow
         exit 0
     }
     else 
     {
         try 
         {
+            Show-FormattedHeader -HeaderMessage "Set New Registry Value"
             Set-RegistryValueUAC -RegistryPath $RegistryPathLUA -PropertyName $PropertyNameLUA -RegistryValue 1 -ErrorAction Stop
+
+            $NewValueLUA = Get-RegistryValue -RegistryPath $RegistryPathLUA -PropertyName $PropertyNameLUA
+            Write-Host -Object "[+] $CurrentUserPrompt New Value for $PropertyNameLUA : $NewValueLUA" -ForegroundColor Green
+
+            if ($NewValueLUA -eq 1)
+            {
+                Write-Host -Object "[+] $CurrentUserPrompt UAC has been successfully enabled!" -ForegroundColor Green
+                Write-Host -Object "[+] $CurrentUserPrompt For changes to take effect, you must restart the PC!" -ForegroundColor Green
+            }
+            else 
+            {
+                Write-Host -Object "[*] $CurrentUserPrompt UAC couldn't be enabled!" -ForegroundColor Red
+                Write-Host -Object "[*] $CurrentUserPrompt The script will exit!" -ForegroundColor Red
+                exit 7
+            }
         }
         catch 
         {
-            Write-Output -InputObject "[x] $CurrentUserPrompt An error occured when trying to enable UAC!"
-            Write-Output -InputObject "[x] $CurrentUserPrompt Error: $($_.Exception.Message)"
-            Write-Output -InputObject "[x] $CurrentUserPrompt The script will exit!"
+            Write-Host -Object "[x] $CurrentUserPrompt An error occured when trying to enable UAC!" -ForegroundColor Red
+            Write-Host -Object "[x] $CurrentUserPrompt Error: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host -Object "[x] $CurrentUserPrompt The script will exit!" -ForegroundColor Red
             exit 5
         }
-    }
-    $NewValueLUA = Get-RegistryValue -RegistryPath $RegistryPathLUA -PropertyName $PropertyNameLUA
-    Write-Output -InputObject "NewValueLUA: $NewValueLUA"
-    if ($NewValueLUA -eq 1)
-    {
-        Write-Output -InputObject "[+] $CurrentUserPrompt UAC has been successfully enabled!"
-        Update-ChangesUAC
-    }
-    else 
-    {
-        Write-Output -InputObject "[-] $CurrentUserPrompt UAC couldn't be enabled!"
-        Write-Output -InputObject "[-] $CurrentUserPrompt The script will exit!"
-        exit 7
     }
 }
 
 function Disable-UAC
 {
+    Show-FormattedHeader -HeaderMessage "Check Registry"
     Test-RegistryExists -RegistryPath $RegistryPathLUA -PropertyName $PropertyNameLUA
+    
+    Show-FormattedHeader -HeaderMessage "Get Current Registry Value"
     $CurrentValueLUA = Get-RegistryValue -RegistryPath $RegistryPathLUA -PropertyName $PropertyNameLUA
-    Write-Output -InputObject "CurrentValueLUA: $CurrentValueLUA"
+    Write-Host -Object "[+] $CurrentUserPrompt Current value for $PropertyNameLUA : $CurrentValueLUA" -ForegroundColor Green
+
     if ($CurrentValueLUA -eq 0)
     {
-        Write-Output -InputObject "[-] $CurrentUserPrompt UAC is already disabled!"
-        Write-Output -InputObject "[-] $CurrentUserPrompt The script will exit!"
+        Write-Host -Object "[*] $CurrentUserPrompt UAC is already disabled!" -ForegroundColor Yellow
+        Write-Host -Object "[*] $CurrentUserPrompt The script will exit!" -ForegroundColor Yellow
         exit 0
     }
     else 
     {
         try 
         {
+            Show-FormattedHeader -HeaderMessage "Set New Registry Value"
             Set-RegistryValueUAC -RegistryPath $RegistryPathLUA -PropertyName $PropertyNameLUA -RegistryValue 0 -ErrorAction Stop
+
+            $NewValueLUA = Get-RegistryValue -RegistryPath $RegistryPathLUA -PropertyName $PropertyNameLUA
+            Write-Host -Object "[+] $CurrentUserPrompt New Value for $PropertyNameLUA : $NewValueLUA" -ForegroundColor Green
+
+            if ($NewValueLUA -eq 0)
+            {
+                Write-Host -Object "[+] $CurrentUserPrompt UAC has been successfully disabled!" -ForegroundColor Green
+                Write-Host -Object "[+] $CurrentUserPrompt For changes to take effect, you must restart the PC!" -ForegroundColor Green
+            }
+            else 
+            {
+                Write-Host -Object "[*] $CurrentUserPrompt UAC couldn't be disabled!" -ForegroundColor Red
+                Write-Host -Object "[*] $CurrentUserPrompt The script will exit!" -ForegroundColor Red
+                exit 7
+            }
         }
         catch 
         {
-            Write-Output -InputObject "[x] $CurrentUserPrompt An error occured when trying to disable UAC!"
-            Write-Output -InputObject "[x] $CurrentUserPrompt Error: $($_.Exception.Message)"
-            Write-Output -InputObject "[x] $CurrentUserPrompt The script will exit!"
+            Write-Host -Object "[x] $CurrentUserPrompt An error occured when trying to disabled UAC!" -ForegroundColor Red
+            Write-Host -Object "[x] $CurrentUserPrompt Error: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host -Object "[x] $CurrentUserPrompt The script will exit!" -ForegroundColor Red
             exit 5
         }
-    }
-    $NewValueLUA = Get-RegistryValue -RegistryPath $RegistryPathLUA -PropertyName $PropertyNameLUA
-    Write-Output -InputObject "NewValueLUA: $NewValueLUA"
-    if ($NewValueLUA -eq 0)
-    {
-        Write-Output -InputObject "[+] $CurrentUserPrompt UAC has been successfully disabled!"
-        Update-ChangesUAC
-    }
-    else 
-    {
-        Write-Output -InputObject "[-] $CurrentUserPrompt UAC couldn't be disabled!"
-        Write-Output -InputObject "[-] $CurrentUserPrompt The script will exit!"
-        exit 7
     }
 }
 
 function ModifyRegistryUAC
 {
-    if ($Help) 
-    {
-        Show-Help
-    }
-    elseif ($Enable) 
+    if ($Enable) 
     {
         Enable-UAC
     }
-    else 
+    elseif ($Disable) 
     {
         Disable-UAC
+    }
+    else 
+    {
+        Show-Help
     }
 }
 
